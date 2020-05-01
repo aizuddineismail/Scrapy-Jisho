@@ -56,21 +56,28 @@ class KanjiSpider(scrapy.Spider):
         kanjis = []
         
         for info in content.xpath('.//div/div/div[contains(@class, "japanese")]/div[contains(@class, "representation")]'):
-            hiraganas.append(''.join([x.strip() for x in info.xpath('.//span[@class="furigana"]/span/text()').extract()]))
+            hiraganas.append(info.xpath('.//span[@class="furigana"]/span'))
             kanjis.append(''.join([x.strip() for x in info.xpath('.//span[@class="text"]/text() | .//span[@class="text"]/span/text()').extract()]))
 
         for item in zip(kanjis, hiraganas):
             KanjiReading = KanjiReadingItem()
             KanjiReading['level'] = response.meta['level']
             KanjiReading['kanji'] = item[0]
-            KanjiReading['hiragana'] = item[1]
+            KanjiReading['hiragana'] = ''
 
+            for index, character in enumerate(item[1]):
+                char_text = ''.join(character.xpath('.//text()').extract())
+
+                if char_text == "":
+                    KanjiReading['hiragana'] += item[0][index]
+                else:
+                    KanjiReading['hiragana'] += char_text
+            
             yield KanjiReading
 
         next_page = response.xpath('//a[@class="more"]/@href')
         if next_page is not None:
             yield response.follow(next_page, self.parse_kanjireading)
-
 
     def process_reading_compound(self, reading_list):
         on_reading = []
